@@ -32,7 +32,9 @@ token, exigido pela ponte. Conserve profile/email conforme a política local.
 
 Crie client scope opcional bridge:access, incluindo-o em scope no access token. Adicione
 Audience mapper com Included Custom Audience igual a BRIDGE_OAUTH_AUDIENCE; associe ao
-cliente como scope opcional. Esse binding por scope e audiência é documentado pelo
+cliente como scope opcional. Associe também `offline_access` como scope opcional ao
+cliente: o ChatGPT pode solicitá-lo junto com `openid email bridge:access` para
+renovação da autorização. Esse binding por scope e audiência é documentado pelo
 Keycloak quando resource-indicators não está habilitado. Para esta ponte de um único
 recurso, a audiência é fixa e verificada pelo resource server. Não se afirma suporte
 genérico ao RFC8707/seleção dinâmica de resource por essa configuração.
