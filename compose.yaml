@@ -1,0 +1,47 @@
+services:
+  bridge:
+    build:
+      context: .
+      args:
+        PYTHON_IMAGE: ${BRIDGE_PYTHON_IMAGE:?Set a verified Python image digest}
+    image: codex-chatgpt-mcp-proxy:0.1.0
+    restart: unless-stopped
+    env_file: ${BRIDGE_ENV_FILE:-.env}
+    environment:
+      BRIDGE_MODE: production
+      BRIDGE_DATABASE: /data/server.sqlite
+    volumes:
+      - bridge-data:/data
+    networks:
+      - proxy
+    read_only: true
+    tmpfs:
+      - /tmp:size=32M,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 384m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request,urllib.parse; r=urllib.request.Request('http://127.0.0.1:8000/healthz',headers={'Host':urllib.parse.urlsplit(os.environ['BRIDGE_PUBLIC_URL']).netloc}); urllib.request.urlopen(r,timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${BRIDGE_PROXY_NETWORK:?Set existing proxy network}
+      traefik.http.routers.codex-bridge.rule: Host(`${BRIDGE_PUBLIC_HOST:?Set public hostname}`)
+      traefik.http.routers.codex-bridge.entrypoints: ${BRIDGE_PROXY_ENTRYPOINT:-websecure}
+      traefik.http.routers.codex-bridge.tls: "true"
+      traefik.http.routers.codex-bridge.tls.certresolver: ${BRIDGE_TLS_RESOLVER:?Set existing certificate resolver}
+      traefik.http.routers.codex-bridge.service: codex-bridge
+      traefik.http.services.codex-bridge.loadbalancer.server.port: "8000"
+      traefik.http.services.codex-bridge.loadbalancer.passhostheader: "true"
+volumes:
+  bridge-data:
+networks:
+  proxy:
+    external: true
+    name: ${BRIDGE_PROXY_NETWORK}

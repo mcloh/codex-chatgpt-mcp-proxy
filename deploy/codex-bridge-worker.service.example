@@ -1,0 +1,19 @@
+[Unit]
+Description=Codex outbound MCP bridge worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/absolute/path/to/repository
+EnvironmentFile=/absolute/path/to/private/worker.env
+ExecStart=/absolute/path/to/repository/.venv/bin/codex-bridge worker
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=45
+UMask=0077
+# Do not add NoNewPrivileges here without testing: it can interfere with Codex's sandbox.
+# This is a user unit. All approval decisions remain local.
+
+[Install]
+WantedBy=default.target

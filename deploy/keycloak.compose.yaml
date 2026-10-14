@@ -1,0 +1,32 @@
+# Optional routing for an EXISTING Keycloak on the existing proxy network.
+# No Keycloak restart, credentials or Docker socket required by this container.
+services:
+  identity-route:
+    image: ${BRIDGE_NGINX_IMAGE:?Set a verified Nginx image digest}
+    user: "101:101"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'envsubst ''$${BRIDGE_KEYCLOAK_UPSTREAM} $${BRIDGE_PUBLIC_HOST}'' < /etc/bridge/nginx.conf.template > /tmp/nginx.conf && exec nginx -c /tmp/nginx.conf -g ''daemon off;'''
+    environment:
+      BRIDGE_KEYCLOAK_UPSTREAM: ${BRIDGE_KEYCLOAK_UPSTREAM:?Set existing Keycloak internal URL}
+      BRIDGE_PUBLIC_HOST: ${BRIDGE_PUBLIC_HOST}
+    volumes:
+      - ./deploy/keycloak-nginx.conf.template:/etc/bridge/nginx.conf.template:ro
+    networks:
+      - proxy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32M,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 64m
+    pids_limit: 32
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${BRIDGE_PROXY_NETWORK}
+      traefik.http.routers.codex-bridge-identity.rule: Host(`${BRIDGE_PUBLIC_HOST}`) && (PathPrefix(`/realms/codex-bridge/`) || PathPrefix(`/resources/`) || Path(`/.well-known/oauth-authorization-server/realms/codex-bridge`))
+      traefik.http.routers.codex-bridge-identity.entrypoints: ${BRIDGE_PROXY_ENTRYPOINT:-websecure}
+      traefik.http.routers.codex-bridge-identity.tls: "true"
+      traefik.http.routers.codex-bridge-identity.tls.certresolver: ${BRIDGE_TLS_RESOLVER}
+      traefik.http.services.codex-bridge-identity.loadbalancer.server.port: "8080"

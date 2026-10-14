@@ -1,0 +1,36 @@
+pid /tmp/nginx.pid;
+error_log /dev/stderr warn;
+events { worker_connections 128; }
+http {
+    access_log off;
+    client_body_temp_path /tmp/client_body;
+    proxy_temp_path /tmp/proxy_temp;
+    fastcgi_temp_path /tmp/fastcgi_temp;
+    uwsgi_temp_path /tmp/uwsgi_temp;
+    scgi_temp_path /tmp/scgi_temp;
+    server {
+        listen 8080;
+        server_name ${BRIDGE_PUBLIC_HOST};
+        client_max_body_size 128k;
+        location = /.well-known/oauth-authorization-server/realms/codex-bridge {
+            proxy_pass ${BRIDGE_KEYCLOAK_UPSTREAM}/realms/codex-bridge/.well-known/openid-configuration;
+            proxy_set_header Host ${BRIDGE_PUBLIC_HOST};
+            proxy_set_header X-Forwarded-Host ${BRIDGE_PUBLIC_HOST};
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Forwarded-Port 443;
+        }
+        location /realms/codex-bridge/ {
+            proxy_pass ${BRIDGE_KEYCLOAK_UPSTREAM};
+            proxy_set_header Host ${BRIDGE_PUBLIC_HOST};
+            proxy_set_header X-Forwarded-Host ${BRIDGE_PUBLIC_HOST};
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Forwarded-Port 443;
+        }
+        location /resources/ {
+            proxy_pass ${BRIDGE_KEYCLOAK_UPSTREAM};
+            proxy_set_header Host ${BRIDGE_PUBLIC_HOST};
+            proxy_set_header X-Forwarded-Proto https;
+        }
+        location / { return 404; }
+    }
+}
